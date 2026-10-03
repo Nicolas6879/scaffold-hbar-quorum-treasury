@@ -1,0 +1,40 @@
+name: Fresh scaffold (bounty gate)
+
+# Scaffolds this template with the real create-scaffold-hbar CLI, exactly as a judge would,
+# then runs install, lint, tests, build and a route check. Runs nightly to catch CLI releases.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        pm: [yarn, npm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Foundry (pinned; forge >= 1.8 breaks Hedera relay deploys)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+      - run: corepack enable
+      - run: git config --global user.email "ci@example.com" && git config --global user.name "ci"
+      - name: Scaffold with the published CLI
+        env:
+          TEMPLATE: ${{ github.repository }}#${{ github.head_ref || github.ref_name }}
+          GIGET_AUTH: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx --yes create-scaffold-hbar@0.4.1 app --template "$TEMPLATE" \
+            --solidity-framework foundry --package-manager ${{ matrix.pm }} --skip-hedera-skills --ci
+      - name: Check the scaffolded project
+        run: bash .github/scripts/check-scaffold.sh app ${{ matrix.pm }}

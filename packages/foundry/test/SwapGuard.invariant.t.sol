@@ -52,7 +52,13 @@ contract SwapGuardInvariantTest is Test {
         MockStable usdc = new MockStable(6);
         MockRouter router = new MockRouter(usdc, 1, 1000);
         guard = new SwapGuard(
-            ISaucerSwapV1Router(address(router)), IAggregatorV3(address(feed)), address(0x3ad2), address(usdc), 6, 6 hours, 300
+            ISaucerSwapV1Router(address(router)),
+            IAggregatorV3(address(feed)),
+            address(0x3ad2),
+            address(usdc),
+            6,
+            6 hours,
+            300
         );
         handler = new GuardHandler(guard, feed, router);
         targetContract(address(handler));

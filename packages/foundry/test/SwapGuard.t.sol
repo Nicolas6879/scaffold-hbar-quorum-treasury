@@ -177,7 +177,13 @@ contract SwapGuardTest is Test {
         assertEq(guard.quoteFromOracle(ONE_HBAR, PRICE), 100_000, "8-dec feed, 6-dec stable");
         MockAggregator feed18 = new MockAggregator(18, 1e17, block.timestamp);
         SwapGuard g18 = new SwapGuard(
-            ISaucerSwapV1Router(address(router)), IAggregatorV3(address(feed18)), WHBAR, address(usdc), 18, MAX_AGE, BAND
+            ISaucerSwapV1Router(address(router)),
+            IAggregatorV3(address(feed18)),
+            WHBAR,
+            address(usdc),
+            18,
+            MAX_AGE,
+            BAND
         );
         assertEq(g18.quoteFromOracle(ONE_HBAR, 1e17), 1e17, "18-dec feed, 18-dec stable");
     }
