@@ -6,8 +6,8 @@ import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Scaffold-HBAR",
-  description: "Built with Scaffold-HBAR",
+  title: "Quorum Treasury",
+  description: "Native Hedera team treasury built with Scaffold-HBAR",
 });
 
 const ScaffoldHbarApp = ({ children }: { children: React.ReactNode }) => {

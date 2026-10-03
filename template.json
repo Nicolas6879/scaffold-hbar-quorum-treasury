@@ -1,10 +1,11 @@
 {
-  "name": "blank",
-  "description": "Minimal Scaffold-HBAR starter: Next.js, Hardhat or Foundry, sample HTS contracts, no opinionated product UI.",
+  "name": "quorum-treasury",
+  "description": "Native Hedera team treasury: 2-of-3 threshold key, timelocked scheduled proposals with a minority veto, a USDC spending budget the network enforces, Chainlink-guarded SaucerSwap swaps and an HCS proposal index.",
+  "version": "0.1.0",
   "create-scaffold-hbar": {
     "capabilities": {
       "frontend": ["nextjs-app"],
-      "solidityFramework": ["foundry", "hardhat"],
+      "solidityFramework": ["foundry"],
       "packageManager": ["yarn", "npm"]
     },
     "defaults": {
@@ -12,30 +13,46 @@
       "solidityFramework": "foundry",
       "packageManager": "yarn"
     },
+    "requirements": {
+      "node": ">=20.18.3"
+    },
+    "envVars": [
+      { "key": "HEDERA_NETWORK", "description": "testnet (default) or mainnet" },
+      { "key": "OPERATOR_ID", "description": "Funded account that pays for setup (create it free at https://portal.hedera.com)" },
+      { "key": "OPERATOR_KEY", "description": "Private key of OPERATOR_ID (ECDSA or ED25519). Never commit it." },
+      { "key": "SIGNER1_PUBLIC_KEY", "description": "Optional: public key of your HashPack account to make it signer 1 (otherwise setup generates 3 signer keys)" },
+      { "key": "NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID", "description": "Optional: Reown/WalletConnect project id to sign with HashPack in the browser" }
+    ],
     "outro": {
       "sections": [
         {
-          "title": "Next steps",
+          "title": "Look first (no account needed)",
           "steps": [
             {
-              "label": "Generate or import a deployer account",
-              "command": "{run:framework:account:generate}"
-            },
-            {
-              "label": "Start a local chain",
-              "command": "{run:framework:chain}"
-            },
-            {
-              "label": "Deploy contracts to that node",
-              "command": "{run:framework:deploy} --network localhost"
-            },
-            {
-              "label": "Start the frontend",
+              "label": "Open the read-only demo treasury on testnet",
               "command": "{run:next:dev}"
             },
             {
-              "text": "For Hedera testnet/mainnet deploy and verify, see the Scaffold HBAR docs and your chosen package README under packages/hardhat or packages/foundry."
+              "text": "Every proposal, signature, veto and budget shown there links to HashScan."
             }
+          ]
+        },
+        {
+          "title": "Run your own treasury on testnet",
+          "steps": [
+            { "label": "Get a free funded testnet account", "url": "https://portal.hedera.com" },
+            { "text": "Put OPERATOR_ID and OPERATOR_KEY in .env.local (see .env.example)." },
+            { "label": "Create the 2-of-3 treasury, ops account, signer keys and HCS index", "command": "{run:treasury:setup}" },
+            { "label": "Propose a payment and sign it as signer 2", "command": "{run:treasury:propose} -- --type hbar --to 0.0.98 --amount 1" },
+            { "label": "Check every proof against the mirror node", "command": "{run:verify:proofs}" }
+          ]
+        },
+        {
+          "title": "Contracts",
+          "steps": [
+            { "label": "Test SwapGuard (unit, fuzz, invariant)", "command": "{run:foundry:test}" },
+            { "label": "Deploy your own SwapGuard to testnet", "command": "{run:foundry:deploy} --network hedera_testnet" },
+            { "text": "Read AGENTS.md before asking a coding agent to extend the template, and docs/CUSTOMIZE.md to change M-of-N or add a proposal type." }
           ]
         }
       ]

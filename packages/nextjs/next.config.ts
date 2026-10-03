@@ -4,6 +4,8 @@ import path from "path";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   reactStrictMode: true,
+  // @sh/treasury ships TypeScript source shared with the CLI scripts.
+  transpilePackages: ["@sh/treasury"],
   devIndicators: false,
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",

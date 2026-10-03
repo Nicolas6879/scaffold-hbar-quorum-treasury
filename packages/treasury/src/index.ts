@@ -9,4 +9,5 @@ export * from "./errors";
 export * from "./mirror";
 export * from "./hcs-index";
 export * from "./decode";
+export * from "./proposals";
 export * from "./swap-guard-abi";
