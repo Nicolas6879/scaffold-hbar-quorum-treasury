@@ -192,6 +192,40 @@ const steps: Record<string, () => Promise<void>> = {
     });
   },
 
+  /** Testnet only: get a few USDC (0.0.5449) for the treasury by swapping on the public pool from the operator. */
+  async fund() {
+    const d = readDeployment();
+    const treasury = need(d.treasuryId, "treasury");
+    const op = await mirror.getAccount(operatorId.toString());
+    if (!op.balance.tokens.some(t => t.token_id === TESTNET.usdc.tokenId)) {
+      await (
+        await new TokenAssociateTransaction().setAccountId(operatorId).setTokenIds([TokenId.fromString(TESTNET.usdc.tokenId)]).execute(client)
+      ).getReceipt(client);
+    }
+    const routerAbi = parseAbi(["function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])"]);
+    const data = encodeFunctionData({
+      abi: routerAbi,
+      functionName: "swapExactETHForTokens",
+      args: [0n, [TESTNET.saucerswap.whbarTokenEvm, toLongZeroAddress(TESTNET.usdc.tokenId)], toLongZeroAddress(operatorId.toString()), BigInt(Math.floor(Date.now() / 1000) + 600)],
+    });
+    await (
+      await new ContractExecuteTransaction()
+        .setContractId(ContractId.fromString(TESTNET.saucerswap.routerId))
+        .setGas(1_500_000)
+        .setPayableAmount(new Hbar(Number(args.hbar ?? 3)))
+        .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
+        .execute(client)
+    ).getReceipt(client);
+    const usdc = TokenId.fromString(TESTNET.usdc.tokenId);
+    await (
+      await new TransferTransaction()
+        .addTokenTransfer(usdc, operatorId, -5_000_000)
+        .addTokenTransfer(usdc, AccountId.fromString(treasury), 5_000_000)
+        .execute(client)
+    ).getReceipt(client);
+    log("Funded the treasury with 5 USDC (bought on the public testnet pool by the operator)");
+  },
+
   /** Proof 5: USDC budget for the ops account, spent within the allowance, and refused beyond it. */
   async budget() {
     const d = readDeployment();
@@ -377,7 +411,7 @@ const steps: Record<string, () => Promise<void>> = {
 };
 
 async function main() {
-  const order = ["guards", "reject", "payment", "veto", "budget", "pool", "swap"];
+  const order = ["guards", "reject", "payment", "veto", "fund", "budget", "pool", "swap", "rotate"];
   const requested = args.step === "all" ? order : [args.step ?? "guards"];
   if (local.length < 2) throw new Error("The demo needs at least two signers with local keys.");
   for (const step of requested) {

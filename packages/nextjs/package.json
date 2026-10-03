@@ -16,6 +16,7 @@
     "@heroicons/react": "^2.1.5",
     "@hiero-ledger/proto": "^2.25.0",
     "@hiero-ledger/sdk": "^2.80.0",
+    "@next/env": "15.5.12",
     "@rainbow-me/rainbowkit": "2.2.9",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@scaffold-hbar-ui/components": "^2.0.0",

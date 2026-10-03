@@ -1,5 +1,9 @@
+import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 import path from "path";
+
+// One .env.local at the repo root serves the CLI scripts and the dashboard alike.
+loadEnvConfig(path.join(__dirname, "../.."));
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
