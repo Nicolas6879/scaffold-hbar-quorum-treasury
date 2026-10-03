@@ -1,0 +1,37 @@
+{
+  "name": "@sh/treasury",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Native Hedera team treasury: threshold-key quorum, timelocked scheduled proposals, minority veto, USDC spending budget and an HCS proposal index.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "setup": "tsx scripts/setup.ts",
+    "seed-pool": "tsx scripts/seed-pool.ts",
+    "demo": "tsx scripts/demo.ts",
+    "propose": "tsx scripts/propose.ts",
+    "sign": "tsx scripts/sign.ts",
+    "veto": "tsx scripts/veto.ts",
+    "verify:proofs": "tsx scripts/verify-proofs.ts"
+  },
+  "dependencies": {
+    "@hiero-ledger/sdk": "^2.80.0",
+    "viem": "2.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "fast-check": "^3.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.2",
+    "vitest": "^2.1.8"
+  }
+}
