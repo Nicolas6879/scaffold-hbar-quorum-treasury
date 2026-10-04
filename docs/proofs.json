@@ -1,7 +1,7 @@
 [
   {
     "id": "guard-rejects-public-pool",
-    "claim": "SwapGuard refuses the public SaucerSwap WHBAR/USDC pool: PoolPriceOutOfBand(oracle 0.1016 USDC, pool 2.2373 USDC for 1 HBAR) — ~22x away from Chainlink",
+    "claim": "SwapGuard refuses the public SaucerSwap WHBAR/USDC pool: PoolPriceOutOfBand(oracle 0.1016 USDC, pool 2.2373 USDC for 1 HBAR) \u2014 ~22x away from Chainlink",
     "hashscan": "https://hashscan.io/testnet/transaction/0.0.5525497@1791075440.982494874",
     "mirrorPath": "/api/v1/contracts/results/0.0.5525497-1791075440-982494874",
     "expect": {
@@ -31,7 +31,7 @@
       "signatures.1.type": "ECDSA_SECP256K1"
     },
     "signedBy": "script signers 2 and 3",
-    "test": "status.test.ts › is timelocked once quorum is reached"
+    "test": "status.test.ts \u203a is timelocked once quorum is reached"
   },
   {
     "id": "minority-veto",
@@ -43,7 +43,7 @@
       "executed_timestamp": null
     },
     "signedBy": "script signers",
-    "test": "status.test.ts › is vetoed when deleted"
+    "test": "status.test.ts \u203a is vetoed when deleted"
   },
   {
     "id": "signer-rotation",
@@ -54,5 +54,54 @@
       "deleted": false
     },
     "signedBy": "script signers + new key"
+  },
+  {
+    "id": "hashpack-signed-rotation",
+    "claim": "Signer rotation co-signed from HashPack: the quorum key was replaced by a scheduled AccountUpdate after its timelock",
+    "hashscan": "https://hashscan.io/testnet/schedule/0.0.10859122",
+    "mirrorPath": "/api/v1/transactions/0.0.5525497-1791129519-717167133?scheduled=true",
+    "expect": {
+      "transactions.0.name": "CRYPTOUPDATEACCOUNT",
+      "transactions.0.result": "SUCCESS",
+      "transactions.0.scheduled": true
+    },
+    "signedBy": "HashPack (signer 1) + script signer 2 + new key",
+    "test": "proposals-decode.test.ts \u203a key rotation round trip"
+  },
+  {
+    "id": "hashpack-signature-rotation",
+    "claim": "The rotation's ScheduleSign was paid and submitted by the HashPack account 0.0.7615675 (signer 1)",
+    "hashscan": "https://hashscan.io/testnet/transaction/1791130494.104352104",
+    "mirrorPath": "/api/v1/transactions/0.0.7615675-1791130476-156452062",
+    "expect": {
+      "transactions.0.name": "SCHEDULESIGN",
+      "transactions.0.result": "SUCCESS",
+      "transactions.0.entity_id": "0.0.10859122"
+    },
+    "signedBy": "HashPack"
+  },
+  {
+    "id": "hashpack-signed-payment",
+    "claim": "A payment approved by HashPack + one script signer executed only after its timelock",
+    "hashscan": "https://hashscan.io/testnet/schedule/0.0.10859128",
+    "mirrorPath": "/api/v1/transactions/0.0.5525497-1791129534-959848766?scheduled=true",
+    "expect": {
+      "transactions.0.name": "CRYPTOTRANSFER",
+      "transactions.0.result": "SUCCESS",
+      "transactions.0.scheduled": true
+    },
+    "signedBy": "HashPack (signer 1) + script signer 2"
+  },
+  {
+    "id": "hashpack-signature-payment",
+    "claim": "The payment's ScheduleSign was paid and submitted by the HashPack account 0.0.7615675 (signer 1)",
+    "hashscan": "https://hashscan.io/testnet/transaction/1791130565.504593104",
+    "mirrorPath": "/api/v1/transactions/0.0.7615675-1791130554-386829261",
+    "expect": {
+      "transactions.0.name": "SCHEDULESIGN",
+      "transactions.0.result": "SUCCESS",
+      "transactions.0.entity_id": "0.0.10859128"
+    },
+    "signedBy": "HashPack"
   }
 ]
