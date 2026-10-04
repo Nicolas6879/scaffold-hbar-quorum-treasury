@@ -28,7 +28,7 @@ npx create-scaffold-hbar@latest my-treasury --template Nicolas6879/scaffold-hbar
 | Spending past the USDC allowance fails with `AMOUNT_EXCEEDS_ALLOWANCE` | [transaction](https://hashscan.io/testnet/transaction/0.0.10849918@1791133984.830583839) |
 | Guarded swap executed through SwapGuard on an in-band pool | [schedule 0.0.10859924](https://hashscan.io/testnet/schedule/0.0.10859924) |
 
-All 12 claims re-check against the public mirror node with `yarn verify:proofs` (no keys needed) — full table in [`docs/TESTNET_PROOF.md`](docs/TESTNET_PROOF.md). The pitch deck in [`docs/pitch/index.html`](docs/pitch/index.html) does the same in your browser: open it (or serve `docs/` with any static server) and every number on its slides is fetched live from the testnet mirror node.
+All 12 claims re-check against the public mirror node with `yarn verify:proofs` (no keys needed) — full table in [`docs/TESTNET_PROOF.md`](docs/TESTNET_PROOF.md).
 
 Every funded team ends up rebuilding the same plumbing: a shared account nobody can drain alone, a way to approve payments asynchronously, a budget for small expenses, and a log investors can audit. On EVM chains teams reach for Safe. On Hedera the ledger already has the primitives — this template wires them into something a team can use on day one and a developer can extend in an afternoon.
 
@@ -88,12 +88,9 @@ yarn next:dev                          # watch it go: collecting → veto window
 | `yarn treasury:sign -- --schedule 0.0.x --as 3` | Approve; prints the decoded proposal first |
 | `yarn treasury:veto -- --schedule 0.0.x --as 1` | Veto during the timelock |
 | `yarn treasury:demo -- --step all` | Re-create every proof in `docs/proofs.json` |
-| `yarn treasury:video` | Paced presenter demo on the live testnet treasury (see below) |
 | `yarn verify:proofs` | Check every recorded proof against the public mirror node (no keys) |
 | `yarn test` | Treasury library (vitest, incl. property tests) + SwapGuard (unit, fuzz, invariant) |
 | `yarn foundry:deploy --network hedera_testnet` | Deploy your own SwapGuard |
-
-**Presenter demo.** With the dashboard running (`yarn next:dev`), `yarn treasury:video` drives a ≤3-minute screen recording so you only narrate: it opens each page in your browser, makes the SwapGuard refuse the mispriced public pool with a live read-only call, proposes a 1 HBAR payment (signer 2), co-signs it (signer 3, or you in HashPack with `--hashpack`), vetoes a second proposal, and waits for the first to execute after its timelock. Flags: `--pace <s>` (default 8), `--manual` (wait for Enter), `--timelock <s>`, `--no-veto`, `--no-open`. It spends a few testnet HBAR and never writes `docs/proofs.json`.
 
 ## How a proposal flows
 

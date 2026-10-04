@@ -21,7 +21,6 @@
     "propose": "tsx scripts/propose.ts",
     "sign": "tsx scripts/sign.ts",
     "veto": "tsx scripts/veto.ts",
-    "video": "tsx scripts/video.ts",
     "verify:proofs": "tsx scripts/verify-proofs.ts"
   },
   "dependencies": {

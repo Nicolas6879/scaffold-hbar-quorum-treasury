@@ -52,7 +52,6 @@
     "treasury:test": "yarn workspace @sh/treasury test",
     "treasury:verify:proofs": "yarn workspace @sh/treasury verify:proofs",
     "treasury:veto": "yarn workspace @sh/treasury veto",
-    "treasury:video": "yarn workspace @sh/treasury video",
     "verify:proofs": "yarn workspace @sh/treasury verify:proofs"
   },
   "packageManager": "yarn@3.2.3",
