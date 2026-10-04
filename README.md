@@ -1,10 +1,34 @@
 # Quorum Treasury — a native Hedera team treasury (Scaffold-HBAR template)
 
-> Your startup just got a grant. **Large payments need 2 of 3 founders and then wait out a veto window before they run. Day-to-day spending comes from a USDC budget that the network itself caps. Treasury swaps the template proposes go through a guard that demands the Chainlink price.** There is no multisig contract: it is Hedera threshold keys, scheduled transactions and allowances, plus SaucerSwap and Chainlink where money changes hands.
+> A team treasury built from Hedera's own primitives, not a wallet contract. **Large payments need 2 of 3 founders and then wait out a veto window; day-to-day spending comes from a USDC budget the network caps; HBAR→USD swaps go through a guard that demands the Chainlink price.** SaucerSwap is where the swap happens, Chainlink is what it is checked against.
 
 ```bash
 npm create scaffold-hbar@latest -- --template Nicolas6879/scaffold-hbar-quorum-treasury
+# or, explicit:
+npx create-scaffold-hbar@latest my-treasury --template Nicolas6879/scaffold-hbar-quorum-treasury -s foundry --package-manager yarn
 ```
+
+## Why Chainlink and SaucerSwap are load-bearing
+
+- **USD policy routing is priced by Chainlink HBAR/USD.** `@sh/treasury` values each spend in USD and decides: ops budget, quorum, or quorum with a long veto window. Without the oracle there is no USD value to route on.
+- **`SwapGuard.sol` sits between the treasury and SaucerSwap V1.** It reads Chainlink HBAR/USD (fresh, positive), refuses any pool whose price is more than 3 % away from it, and derives `amountOutMin` on-chain from the oracle, so the proposer cannot choose a bad minimum.
+- **The guard demonstrably refuses.** The only public testnet WHBAR/USDC pool is ~22× off Chainlink (pool 2.2373 vs oracle 0.1016 USDC per HBAR) and the swap reverts with `PoolPriceOutOfBand`: [proof on HashScan](https://hashscan.io/testnet/transaction/0.0.5525497@1791075440.982494874).
+- **It also lets good swaps through.** A 2-of-3 swap proposal (the demo swaps 0.25 HBAR at 3 % slippage) executed through SwapGuard and SaucerSwap on an in-band pool the demo seeds: [proof on HashScan](https://hashscan.io/testnet/schedule/0.0.10859924).
+- **What is on-ledger and what is not.** The KeyList threshold, timelock, veto, allowance cap and SwapGuard are enforced by the network and the contract. The USD routing policy runs off-chain in the library and UI (see Limitations).
+
+## Proof on testnet
+
+| Claim | HashScan |
+|---|---|
+| SwapGuard refuses the public WHBAR/USDC pool (~22× off Chainlink) | [transaction](https://hashscan.io/testnet/transaction/0.0.5525497@1791075440.982494874) |
+| Treasury is a 2-of-3 threshold key, no multisig contract | [account 0.0.10849917](https://hashscan.io/testnet/account/0.0.10849917) |
+| Payment co-signed from HashPack executed only after its timelock | [schedule 0.0.10859128](https://hashscan.io/testnet/schedule/0.0.10859128) |
+| ...and the HashPack account's own `ScheduleSign` for it | [transaction](https://hashscan.io/testnet/transaction/1791130565.504593104) |
+| One signer vetoed a fully approved proposal during its timelock | [schedule 0.0.10849966](https://hashscan.io/testnet/schedule/0.0.10849966) |
+| Spending past the USDC allowance fails with `AMOUNT_EXCEEDS_ALLOWANCE` | [transaction](https://hashscan.io/testnet/transaction/0.0.10849918@1791133984.830583839) |
+| Guarded swap executed through SwapGuard on an in-band pool | [schedule 0.0.10859924](https://hashscan.io/testnet/schedule/0.0.10859924) |
+
+All 12 claims re-check against the public mirror node with `yarn verify:proofs` (no keys needed) — full table in [`docs/TESTNET_PROOF.md`](docs/TESTNET_PROOF.md).
 
 Every funded team ends up rebuilding the same plumbing: a shared account nobody can drain alone, a way to approve payments asynchronously, a budget for small expenses, and a log investors can audit. On EVM chains teams reach for Safe. On Hedera the ledger already has the primitives — this template wires them into something a team can use on day one and a developer can extend in an afternoon.
 
