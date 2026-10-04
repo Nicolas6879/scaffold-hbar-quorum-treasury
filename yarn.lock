@@ -3198,7 +3198,7 @@ __metadata:
     "@scaffold-hbar-ui/components": ^2.0.0
     "@scaffold-hbar-ui/debug-contracts": ^2.0.0
     "@scaffold-hbar-ui/hooks": ^1.1.0
-    "@sh/treasury": "workspace:*"
+    "@sh/treasury": "*"
     "@tailwindcss/postcss": latest
     "@tanstack/react-query": ^5.59.15
     "@trivago/prettier-plugin-sort-imports": ^4.3.0
@@ -3232,7 +3232,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sh/treasury@workspace:*, @sh/treasury@workspace:packages/treasury":
+"@sh/treasury@*, @sh/treasury@workspace:packages/treasury":
   version: 0.0.0-use.local
   resolution: "@sh/treasury@workspace:packages/treasury"
   dependencies:

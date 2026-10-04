@@ -6,10 +6,15 @@ const root = resolve(__dirname, "../../..");
 const templatePath = resolve(root, "template.json");
 
 // template.json only exists in the template repo; create-scaffold-hbar consumes it when scaffolding.
-describe.skipIf(!existsSync(templatePath))("template.json", () => {
-  const template = JSON.parse(readFileSync(templatePath, "utf8"));
+// vitest still runs the describe body when the suite is skipped, so read the file defensively.
+const present = existsSync(templatePath);
+describe.skipIf(!present)("template.json", () => {
+  const template = present ? JSON.parse(readFileSync(templatePath, "utf8")) : {};
   const block = template["create-scaffold-hbar"];
-  const scripts = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")).scripts as Record<string, string>;
+  const scripts = (present ? JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")).scripts : {}) as Record<
+    string,
+    string
+  >;
 
   it("defaults to foundry + yarn, the CLI's fallback when the manifest cannot be fetched", () => {
     expect(block.defaults).toMatchObject({ solidityFramework: "foundry", packageManager: "yarn", frontend: "nextjs-app" });
