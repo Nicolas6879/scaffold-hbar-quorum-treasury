@@ -28,7 +28,7 @@ npx create-scaffold-hbar@latest my-treasury --template Nicolas6879/scaffold-hbar
 | Spending past the USDC allowance fails with `AMOUNT_EXCEEDS_ALLOWANCE` | [transaction](https://hashscan.io/testnet/transaction/0.0.10849918@1791133984.830583839) |
 | Guarded swap executed through SwapGuard on an in-band pool | [schedule 0.0.10859924](https://hashscan.io/testnet/schedule/0.0.10859924) |
 
-All 12 claims re-check against the public mirror node with `yarn verify:proofs` (no keys needed) — full table in [`docs/TESTNET_PROOF.md`](docs/TESTNET_PROOF.md).
+All 12 claims re-check against the public mirror node with `yarn verify:proofs` (no keys needed) — full table in [`docs/TESTNET_PROOF.md`](docs/TESTNET_PROOF.md). The pitch deck in [`docs/pitch/index.html`](docs/pitch/index.html) does the same in your browser: open it (or serve `docs/` with any static server) and every number on its slides is fetched live from the testnet mirror node.
 
 Every funded team ends up rebuilding the same plumbing: a shared account nobody can drain alone, a way to approve payments asynchronously, a budget for small expenses, and a log investors can audit. On EVM chains teams reach for Safe. On Hedera the ledger already has the primitives — this template wires them into something a team can use on day one and a developer can extend in an afternoon.
 
