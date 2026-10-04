@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { KeyNode, TESTNET, base64ToHex, hasSignedWith, memberKeys, shortKey, signerNumber } from "@sh/treasury";
-import { explain } from "@sh/treasury/errors";
+import { explain, explainWalletError } from "@sh/treasury/errors";
 import { WALLET_CONNECT_PROJECT_ID, connectWallet, useWallet } from "~~/services/hedera/walletConnect";
 
 /** Raw public key of an account as the mirror node reports it (null for threshold/unknown keys). */
 async function fetchAccountKey(accountId: string): Promise<string | null> {
-  const res = await fetch(`${TESTNET.mirrorUrl}/api/v1/accounts/${accountId}`);
+  const res = await fetch(`${TESTNET.mirrorUrl}/api/v1/accounts/${accountId}`, { signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`Mirror node returned ${res.status} for ${accountId}`);
   const key = ((await res.json()) as { key?: { _type: string; key: string } | null }).key;
   return key && (key._type === "ED25519" || key._type === "ECDSA_SECP256K1") ? key.key.toLowerCase() : null;
@@ -17,16 +17,22 @@ async function fetchAccountKey(accountId: string): Promise<string | null> {
 async function signatureLanded(scheduleId: string, publicKey: string): Promise<boolean> {
   for (let attempt = 0; attempt < 6; attempt++) {
     await new Promise(r => setTimeout(r, attempt === 0 ? 3000 : 2500));
-    const res = await fetch(`${TESTNET.mirrorUrl}/api/v1/schedules/${scheduleId}`).catch(() => null);
-    if (!res?.ok) continue;
-    const { signatures } = (await res.json()) as { signatures: { public_key_prefix: string }[] };
-    if (
-      hasSignedWith(
-        publicKey,
-        signatures.map(s => base64ToHex(s.public_key_prefix)),
+    try {
+      const res = await fetch(`${TESTNET.mirrorUrl}/api/v1/schedules/${scheduleId}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const { signatures } = (await res.json()) as { signatures: { public_key_prefix: string }[] };
+      if (
+        hasSignedWith(
+          publicKey,
+          signatures.map(s => base64ToHex(s.public_key_prefix)),
+        )
       )
-    )
-      return true;
+        return true;
+    } catch {
+      // mirror slow or unreachable: keep polling, the transaction itself already succeeded
+    }
   }
   return false;
 }
@@ -109,7 +115,7 @@ export function ProposalActions({
         });
       }
     } catch (error) {
-      setResult({ ok: false, text: explain(error) });
+      setResult({ ok: false, text: explainWalletError(error) });
     } finally {
       setBusy(null);
     }

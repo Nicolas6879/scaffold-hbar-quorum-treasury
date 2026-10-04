@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { explainWalletError } from "@sh/treasury/errors";
 import {
   WALLET_CONNECT_PROJECT_ID,
   connectWallet,
@@ -12,6 +13,7 @@ import {
 /** Header button: connect HashPack over WalletConnect and show the connected account. */
 export function HashPackButton() {
   const { accountId, connecting } = useWallet();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (WALLET_CONNECT_PROJECT_ID) void restoreWallet();
@@ -43,12 +45,22 @@ export function HashPackButton() {
   }
 
   return (
-    <button
-      className="btn btn-primary btn-sm"
-      disabled={connecting}
-      onClick={() => void connectWallet().catch(() => undefined)}
-    >
-      {connecting ? <span className="loading loading-spinner loading-xs" /> : null} Connect HashPack
-    </button>
+    <div className="flex items-center gap-2">
+      {error && (
+        <span className="text-error text-xs max-w-xs text-right" role="alert">
+          {error}
+        </span>
+      )}
+      <button
+        className="btn btn-primary btn-sm"
+        disabled={connecting}
+        onClick={() => {
+          setError(null);
+          connectWallet().catch(e => setError(explainWalletError(e)));
+        }}
+      >
+        {connecting ? <span className="loading loading-spinner loading-xs" /> : null} Connect HashPack
+      </button>
+    </div>
   );
 }

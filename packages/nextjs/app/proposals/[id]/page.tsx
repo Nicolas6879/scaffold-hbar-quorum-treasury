@@ -1,4 +1,5 @@
-import { canSign, canVeto, isEntityId } from "@sh/treasury";
+import { notFound } from "next/navigation";
+import { MirrorHttpError, canSign, canVeto, isEntityId } from "@sh/treasury";
 import { ProposalActions } from "~~/components/treasury/ProposalActions";
 import { StatusBadge } from "~~/components/treasury/StatusBadge";
 import { loadSchedule } from "~~/utils/treasury/server";
@@ -9,12 +10,15 @@ const HASHSCAN = "https://hashscan.io/testnet";
 
 export default async function ProposalPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!isEntityId(id)) return <Message text={`"${id}" is not a schedule id (expected 0.0.x).`} />;
+  // isEntityId tolerates surrounding whitespace; a route segment must be exactly 0.0.x.
+  if (!isEntityId(id) || id !== id.trim()) notFound();
 
   let data: Awaited<ReturnType<typeof loadSchedule>>;
   try {
     data = await loadSchedule(id);
   } catch (error) {
+    // The mirror node answers 404 for an unknown schedule and 400 for an out-of-range number.
+    if (error instanceof MirrorHttpError && (error.status === 404 || error.status === 400)) notFound();
     return (
       <Message text={`Could not load schedule ${id}: ${error instanceof Error ? error.message : String(error)}`} />
     );
@@ -25,7 +29,11 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
     <div className="flex flex-col gap-6 px-4 py-8 max-w-4xl mx-auto w-full">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">{schedule.memo || `Proposal ${id}`}</h1>
-        {status && <StatusBadge status={status} />}
+        {status ? (
+          <StatusBadge status={status} />
+        ) : (
+          <div className="alert alert-warning">Treasury key unavailable: signature progress cannot be shown.</div>
+        )}
         {!isTreasuryProposal && (
           <div className="alert alert-warning">This schedule is not paid by the configured treasury.</div>
         )}

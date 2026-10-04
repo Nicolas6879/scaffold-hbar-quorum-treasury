@@ -9,20 +9,23 @@
 import { createPublicClient, http } from "viem";
 import {
   budgetProposal,
+  defaultPolicy,
   hbarPaymentProposal,
   hbarToTinybar,
   ProposalType,
   readPriceRound,
+  routeSpend,
   swapProposal,
   TESTNET,
   tinybarToUsd6,
   tokenPaymentProposal,
   parseUnits,
+  truncateUtf8,
 } from "../src";
 import { anyOneKey, loadOrCreateSigners, scriptSigners } from "./lib/signers";
 import { announce, submitProposal } from "./lib/actions";
 import { parseArgs } from "./lib/args";
-import { hashscan, log, operatorClient, readDeployment } from "./lib/network";
+import { hashscan, log, mirror, operatorClient, readDeployment } from "./lib/network";
 
 async function main() {
   const args = parseArgs();
@@ -35,11 +38,12 @@ async function main() {
 
   const now = Math.floor(Date.now() / 1000);
   const timelock = Number(args.timelock ?? 300);
+  if (!Number.isInteger(timelock) || timelock < 1) throw new Error("--timelock must be a whole number of seconds");
   const common = {
     treasuryId: d.treasuryId,
     vetoKey: anyOneKey(signers),
     executeAt: now + timelock,
-    memo: (args.title ?? `${args.type} proposal`).slice(0, 60) + ` #${now}`,
+    memo: `${truncateUtf8(args.title ?? `${args.type} proposal`, 60)} #${now}`,
   };
 
   const evm = createPublicClient({ transport: http(TESTNET.jsonRpcUrl) });
@@ -88,6 +92,15 @@ async function main() {
     }
     default:
       throw new Error("--type must be hbar, usdc, budget or swap");
+  }
+
+  if ((type === "hbar-payment" || type === "token-payment") && usdValue6 > 0n) {
+    // Advisory only: the quorum can still approve anything, but say how the policy would route this spend.
+    const allowance = d.opsAccountId
+      ? await mirror.getTokenAllowance(d.treasuryId, d.opsAccountId, TESTNET.usdc.tokenId).catch(() => null)
+      : null;
+    const route = routeSpend(usdValue6, defaultPolicy(BigInt(allowance?.amount ?? 0)), type === "token-payment");
+    log("Policy route", route.reason);
   }
 
   const { scheduleId } = await submitProposal(client, schedule, proposer.privateKey);

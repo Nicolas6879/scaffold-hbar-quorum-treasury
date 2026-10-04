@@ -14,7 +14,7 @@ import {
   readPriceRound,
   reconcile,
 } from "@sh/treasury";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createPublicClient, http } from "viem";
 
@@ -37,11 +37,14 @@ export interface Proof {
   test?: string;
 }
 
-/** Files live at the repo root; Next runs from packages/nextjs. */
+/** Files live at the repo root; Next runs from packages/nextjs. A missing or malformed file yields the fallback. */
 function readRootJson<T>(relative: string, fallback: T): T {
   for (const base of [path.join(process.cwd(), "../.."), process.cwd()]) {
-    const file = path.join(base, relative);
-    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8")) as T;
+    try {
+      return JSON.parse(readFileSync(path.join(base, relative), "utf8")) as T;
+    } catch {
+      // not here (or unreadable): try the next location
+    }
   }
   return fallback;
 }
@@ -54,8 +57,12 @@ export function loadDeployment(): Deployment {
 
 export const loadProofs = () => readRootJson<Proof[]>("docs/proofs.json", []);
 
-const mirror = new MirrorClient(TESTNET.mirrorUrl, (url, init) =>
-  fetch(url, { ...init, next: { revalidate: 5 } } as RequestInit),
+/** Short timeout and few retries: a slow mirror node should degrade the page, not stall it. */
+const mirror = new MirrorClient(
+  TESTNET.mirrorUrl,
+  (url, init) => fetch(url, { ...init, next: { revalidate: 5 } } as RequestInit),
+  { retries: 2, baseDelayMs: 300 },
+  5000,
 );
 
 export interface ProposalView {
@@ -111,7 +118,9 @@ export async function loadTreasury(): Promise<TreasuryView> {
     let proposals: ProposalView[] = [];
     let indexErrors = 0;
     if (deployment.indexTopicId && treasuryKey) {
-      const parsed = (await mirror.listTopicMessages(deployment.indexTopicId, 200)).map(parseIndexMessage);
+      // Newest 200 announcements, back in chronological order so the first announcement of a schedule wins.
+      const messages = (await mirror.listTopicMessages(deployment.indexTopicId, 200, "desc")).reverse();
+      const parsed = messages.map(parseIndexMessage);
       indexErrors = parsed.filter(p => !p.ok).length;
       const ids = [...new Set(parsed.flatMap(p => (p.ok ? [p.entry.scheduleId] : [])))].slice(-30);
       const schedules = new Map<string, MirrorSchedule | null>(
@@ -164,7 +173,8 @@ export async function loadTreasury(): Promise<TreasuryView> {
 export async function loadSchedule(id: string) {
   const deployment = loadDeployment();
   const schedule = await mirror.getSchedule(id);
-  const account = deployment.treasuryId ? await mirror.getAccount(deployment.treasuryId) : null;
+  // Without the treasury key we cannot show signature progress, but the proposal itself is still worth showing.
+  const account = deployment.treasuryId ? await mirror.getAccount(deployment.treasuryId).catch(() => null) : null;
   const key = account?.key ? keyFromMirror(account.key) : null;
   const inner = schedule.executed_timestamp
     ? ((await mirror.getScheduledTransaction(schedule.executed_timestamp))?.result ?? null)
@@ -182,7 +192,7 @@ export async function loadSchedule(id: string) {
 
 async function readPrice() {
   try {
-    const client = createPublicClient({ transport: http(TESTNET.jsonRpcUrl) });
+    const client = createPublicClient({ transport: http(TESTNET.jsonRpcUrl, { timeout: 4000, retryCount: 1 }) });
     const round = await readPriceRound(client as never, TESTNET.chainlinkHbarUsd);
     return { usd: Number(round.answer) / 10 ** round.decimals, updatedAt: Number(round.updatedAt) };
   } catch {

@@ -18,6 +18,13 @@ export function parseUnits(value: string, decimals: number): bigint {
   return BigInt(whole) * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, "0") || "0");
 }
 
+/** {@link parseUnits} for user input where zero makes no sense (a payment of nothing). */
+export function parsePositiveUnits(value: string, decimals: number): bigint {
+  const amount = parseUnits(value, decimals);
+  if (amount === 0n) throw new Error("Amount must be greater than zero");
+  return amount;
+}
+
 /** Format an integer amount with `decimals` places, trimming trailing zeros. */
 export function formatUnits(value: bigint, decimals: number): string {
   const negative = value < 0n;

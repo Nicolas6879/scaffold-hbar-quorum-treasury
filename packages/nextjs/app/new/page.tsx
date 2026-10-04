@@ -1,4 +1,3 @@
-import { memberKeys } from "@sh/treasury";
 import { NewProposalForm } from "~~/components/treasury/NewProposalForm";
 import { loadTreasury } from "~~/utils/treasury/server";
 
@@ -28,7 +27,6 @@ export default async function NewProposalPage() {
           indexTopicId={t.deployment.indexTopicId}
           members={members}
           hbarUsd={t.hbarUsd}
-          memberCount={memberKeys(t.treasuryKey!).length}
         />
       ) : (
         !t.error && <p className="opacity-70">Configure a treasury first (yarn treasury:setup).</p>

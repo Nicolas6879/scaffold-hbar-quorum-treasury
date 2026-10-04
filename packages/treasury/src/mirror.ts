@@ -60,13 +60,15 @@ export class MirrorClient {
     readonly baseUrl: string,
     private readonly fetchImpl: FetchLike = (url, init) => fetch(url, init),
     private readonly retry = { retries: 4, baseDelayMs: 400 },
+    /** Per-attempt timeout: a mirror node that hangs must not hang the page or script with it. */
+    private readonly timeoutMs = 8000,
   ) {}
 
   private async get<T>(path: string): Promise<T> {
     const url = path.startsWith("http") ? path : `${this.baseUrl}${path}`;
-    // 429 and 5xx are retried with backoff; 4xx such as 404 are answers and surface immediately.
+    // 429, 5xx and timeouts are retried with backoff; 4xx such as 404 are answers and surface immediately.
     return withRetry(async () => {
-      const res = await this.fetchImpl(url);
+      const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(this.timeoutMs) });
       if (!res.ok) throw new MirrorHttpError(res.status, url);
       return (await res.json()) as T;
     }, this.retry);
@@ -106,13 +108,14 @@ export class MirrorClient {
     const body = await this.get<{ allowances: MirrorTokenAllowance[] }>(
       `/api/v1/accounts/${owner}/allowances/tokens?spender.id=${spender}&token.id=${tokenId}`,
     );
-    return body.allowances[0] ?? null;
+    return body.allowances?.[0] ?? null;
   }
 
-  async listTopicMessages(topicId: string, limit = 500): Promise<MirrorTopicMessage[]> {
+  /** `order: "desc"` returns the newest `limit` messages: the right bounded view of a topic that keeps growing. */
+  async listTopicMessages(topicId: string, limit = 500, order: "asc" | "desc" = "asc"): Promise<MirrorTopicMessage[]> {
     const out: MirrorTopicMessage[] = [];
     for await (const m of this.paginate<"messages", MirrorTopicMessage>(
-      `/api/v1/topics/${topicId}/messages?order=asc&limit=100`,
+      `/api/v1/topics/${topicId}/messages?order=${order}&limit=${Math.min(limit, 100)}`,
       "messages",
     )) {
       out.push(m);

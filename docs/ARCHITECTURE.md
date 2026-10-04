@@ -19,7 +19,7 @@ packages/nextjs     dashboard               reads the mirror node, signs with Ha
 
 ## A proposal, end to end
 
-1. **Value it** (`pricing.ts`, `policy.ts`): read Chainlink HBAR/USD (`latestRoundData`, staleness ≤ 6 h), convert the amount to USD (6 decimals), route it: inside the ops budget → no proposal needed; above the long-timelock threshold → 7-day window; otherwise the normal window.
+1. **Value it** (`pricing.ts`, `policy.ts`): read Chainlink HBAR/USD (`latestRoundData`, staleness ≤ 6 h), convert the amount to USD (6 decimals), route it: inside the ops budget → no proposal needed; above the long-timelock threshold → 7-day window; otherwise the normal window. This step is advisory: `treasury:propose` prints the route, the ledger does not enforce it.
 2. **Build it** (`proposals.ts`): a `ScheduleCreateTransaction` with `payerAccountId = treasury`, `waitForExpiry = true`, `expirationTime = now + window` (≤ 62 days, HIP-423), `adminKey = veto key`, memo ≤ 100 bytes. Inner transaction: `TransferTransaction` (HBAR or USDC), `AccountAllowanceApproveTransaction` (budget), `ContractExecuteTransaction` → SwapGuard, or `AccountUpdateTransaction` (rotate signers).
 3. **Propose** (`scripts/lib/actions.ts` or the `/new` page): the proposer signs the ScheduleCreate — that signature already counts, so the proposal starts at 1 of 2 — and posts a `quorum-treasury/v1` JSON entry to the HCS index.
 4. **Approve**: each other signer submits their own `ScheduleSign` (HashPack via `executeWithSigner`, or `yarn treasury:sign`). Signatures are never collected and combined client-side.

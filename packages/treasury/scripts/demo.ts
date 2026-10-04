@@ -1,6 +1,6 @@
 /**
  * Produce the public testnet proofs listed in docs/TESTNET_PROOF.md, one step at a time.
- *   yarn treasury:demo -- --step <guards|reject|payment|veto|budget|pool|swap|rotate|all>
+ *   yarn treasury:demo -- --step <guards|reject|payment|veto|fund|budget|pool|swap|rotate|all>
  * Every step records a claim + mirror query in docs/proofs.json; `yarn verify:proofs` re-checks them.
  * Signatures here come from script keys and are labelled as such; the HashPack-signed proof is made in the UI.
  */
@@ -38,13 +38,13 @@ import {
 import { announce, signProposal, submitProposal, vetoProposal } from "./lib/actions";
 import { parseArgs } from "./lib/args";
 import { REPO_ROOT, upsertEnvLocal } from "./lib/env";
-import { hashscan, log, mirror, operatorClient, readDeployment, writeDeployment } from "./lib/network";
+import { hashscan, log, mirror, operatorClient, orExit, readDeployment, writeDeployment } from "./lib/network";
 import { mirrorTxId, saveProof } from "./lib/proofs";
 import { anyOneKey, loadOrCreateSigners, scriptSigners } from "./lib/signers";
 
 const args = parseArgs();
-const { client, operatorId, operatorKey } = operatorClient();
-const signers = loadOrCreateSigners();
+const { client, operatorId, operatorKey } = orExit(operatorClient);
+const signers = orExit(loadOrCreateSigners);
 const local = scriptSigners(signers);
 const evm = createPublicClient({ transport: http(TESTNET.jsonRpcUrl) });
 const TIMELOCK = Number(args.timelock ?? 90);

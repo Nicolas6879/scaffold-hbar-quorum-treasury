@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 const HASHSCAN = "https://hashscan.io/testnet";
 
 export default async function Home() {
-  const [t, proofs] = await Promise.all([loadTreasury(), Promise.resolve(loadProofs())]);
+  const t = await loadTreasury();
+  const proofs = loadProofs();
   const { deployment: d } = t;
   const pending = t.proposals.filter(p =>
     ["collecting-signatures", "timelocked", "executing"].includes(p.status.state),

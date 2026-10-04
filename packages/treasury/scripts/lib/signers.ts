@@ -9,6 +9,14 @@ export interface Signer {
   privateKey?: PrivateKey;
 }
 
+function parsePublicKey(value: string): PublicKey {
+  try {
+    return PublicKey.fromString(value.trim());
+  } catch {
+    throw new Error("SIGNER1_PUBLIC_KEY is not a valid public key (copy it from HashPack: Settings > Account > Public key).");
+  }
+}
+
 /**
  * Three signers. Signer 1 can be your HashPack account (SIGNER1_PUBLIC_KEY); otherwise the script
  * generates keys and stores them in .env.local. Key types are mixed on purpose (ED25519 + ECDSA)
@@ -19,11 +27,11 @@ export function loadOrCreateSigners(): Signer[] {
   const signers = ([1, 2, 3] as const).map(index => {
     const existing = process.env[`SIGNER${index}_KEY`];
     if (existing) {
-      const privateKey = parsePrivateKey(existing);
+      const privateKey = parsePrivateKey(existing, `SIGNER${index}_KEY`);
       return { index, publicKey: privateKey.publicKey, privateKey };
     }
     if (index === 1 && process.env.SIGNER1_PUBLIC_KEY) {
-      return { index, publicKey: PublicKey.fromString(process.env.SIGNER1_PUBLIC_KEY) };
+      return { index, publicKey: parsePublicKey(process.env.SIGNER1_PUBLIC_KEY) };
     }
     const privateKey = index === 2 ? PrivateKey.generateECDSA() : PrivateKey.generateED25519();
     generated[`SIGNER${index}_KEY`] = privateKey.toStringDer();

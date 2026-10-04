@@ -47,12 +47,12 @@
     "treasury:demo": "yarn workspace @sh/treasury demo",
     "treasury:lint": "yarn workspace @sh/treasury lint",
     "treasury:propose": "yarn workspace @sh/treasury propose",
-    "treasury:seed-pool": "yarn workspace @sh/treasury seed-pool",
     "treasury:setup": "yarn workspace @sh/treasury setup",
     "treasury:sign": "yarn workspace @sh/treasury sign",
     "treasury:test": "yarn workspace @sh/treasury test",
     "treasury:verify:proofs": "yarn workspace @sh/treasury verify:proofs",
     "treasury:veto": "yarn workspace @sh/treasury veto",
+    "treasury:video": "yarn workspace @sh/treasury video",
     "verify:proofs": "yarn workspace @sh/treasury verify:proofs"
   },
   "packageManager": "yarn@3.2.3",

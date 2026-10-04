@@ -64,11 +64,16 @@ export function parseIndexMessage(raw: MirrorTopicMessage): ParsedIndexEntry {
 }
 
 function validate(m: IndexMessage): string | null {
-  if (!SCHEDULE_ID.test(m.scheduleId ?? "")) return "scheduleId must be a 0.0.x id";
+  if (typeof m.scheduleId !== "string" || !SCHEDULE_ID.test(m.scheduleId)) return "scheduleId must be a 0.0.x id";
   if (!TYPES.includes(m.type)) return `unknown type ${String(m.type)}`;
   if (typeof m.title !== "string" || m.title.trim().length === 0 || m.title.length > 120) return "title must be 1-120 chars";
-  if (m.invoiceHash !== undefined && !/^[0-9a-f]{64}$/.test(m.invoiceHash)) return "invoiceHash must be sha256 hex";
-  if (m.usdValue6 !== undefined && !/^\d+$/.test(m.usdValue6)) return "usdValue6 must be an integer string";
+  if (m.invoiceHash !== undefined && !/^[0-9a-f]{64}$/.test(String(m.invoiceHash))) return "invoiceHash must be sha256 hex";
+  if (m.usdValue6 !== undefined && (typeof m.usdValue6 !== "string" || !/^\d+$/.test(m.usdValue6))) {
+    return "usdValue6 must be an integer string";
+  }
+  if (m.signedVia !== undefined && m.signedVia !== "hashpack" && m.signedVia !== "script") {
+    return 'signedVia must be "hashpack" or "script"';
+  }
   return null;
 }
 

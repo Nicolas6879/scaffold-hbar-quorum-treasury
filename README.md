@@ -14,7 +14,7 @@ npx create-scaffold-hbar@latest my-treasury --template Nicolas6879/scaffold-hbar
 - **`SwapGuard.sol` sits between the treasury and SaucerSwap V1.** It reads Chainlink HBAR/USD (fresh, positive), refuses any pool whose price is more than 3 % away from it, and derives `amountOutMin` on-chain from the oracle, so the proposer cannot choose a bad minimum.
 - **The guard demonstrably refuses.** The only public testnet WHBAR/USDC pool is ~22× off Chainlink (pool 2.2373 vs oracle 0.1016 USDC per HBAR) and the swap reverts with `PoolPriceOutOfBand`: [proof on HashScan](https://hashscan.io/testnet/transaction/0.0.5525497@1791075440.982494874).
 - **It also lets good swaps through.** A 2-of-3 swap proposal (the demo swaps 0.25 HBAR at 3 % slippage) executed through SwapGuard and SaucerSwap on an in-band pool the demo seeds: [proof on HashScan](https://hashscan.io/testnet/schedule/0.0.10859924).
-- **What is on-ledger and what is not.** The KeyList threshold, timelock, veto, allowance cap and SwapGuard are enforced by the network and the contract. The USD routing policy runs off-chain in the library and UI (see Limitations).
+- **What is on-ledger and what is not.** The KeyList threshold, timelock, veto, allowance cap and SwapGuard are enforced by the network and the contract. The USD routing policy runs off-chain: `@sh/treasury` computes it and `treasury:propose` prints it, but nothing enforces it (see Limitations).
 
 ## Proof on testnet
 
@@ -88,9 +88,12 @@ yarn next:dev                          # watch it go: collecting → veto window
 | `yarn treasury:sign -- --schedule 0.0.x --as 3` | Approve; prints the decoded proposal first |
 | `yarn treasury:veto -- --schedule 0.0.x --as 1` | Veto during the timelock |
 | `yarn treasury:demo -- --step all` | Re-create every proof in `docs/proofs.json` |
+| `yarn treasury:video` | Paced presenter demo on the live testnet treasury (see below) |
 | `yarn verify:proofs` | Check every recorded proof against the public mirror node (no keys) |
 | `yarn test` | Treasury library (vitest, incl. property tests) + SwapGuard (unit, fuzz, invariant) |
 | `yarn foundry:deploy --network hedera_testnet` | Deploy your own SwapGuard |
+
+**Presenter demo.** With the dashboard running (`yarn next:dev`), `yarn treasury:video` drives a ≤3-minute screen recording so you only narrate: it opens each page in your browser, makes the SwapGuard refuse the mispriced public pool with a live read-only call, proposes a 1 HBAR payment (signer 2), co-signs it (signer 3, or you in HashPack with `--hashpack`), vetoes a second proposal, and waits for the first to execute after its timelock. Flags: `--pace <s>` (default 8), `--manual` (wait for Enter), `--timelock <s>`, `--no-veto`, `--no-open`. It spends a few testnet HBAR and never writes `docs/proofs.json`.
 
 ## How a proposal flows
 

@@ -17,11 +17,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "setup": "tsx scripts/setup.ts",
-    "seed-pool": "tsx scripts/seed-pool.ts",
     "demo": "tsx scripts/demo.ts",
     "propose": "tsx scripts/propose.ts",
     "sign": "tsx scripts/sign.ts",
     "veto": "tsx scripts/veto.ts",
+    "video": "tsx scripts/video.ts",
     "verify:proofs": "tsx scripts/verify-proofs.ts"
   },
   "dependencies": {

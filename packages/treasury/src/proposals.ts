@@ -41,9 +41,30 @@ export class ProposalValidationError extends Error {
   }
 }
 
+const encoder = new TextEncoder();
+
+/** Cut `text` to at most `maxBytes` of UTF-8 without splitting a character (memos are limited in bytes, not characters). */
+export function truncateUtf8(text: string, maxBytes: number): string {
+  let out = "";
+  let bytes = 0;
+  for (const char of text) {
+    bytes += encoder.encode(char).length;
+    if (bytes > maxBytes) break;
+    out += char;
+  }
+  return out;
+}
+
+/** The SDK takes token amounts as JS numbers; refuse what a number cannot hold exactly. */
+function exactNumber(amount: bigint): number {
+  if (amount > BigInt(Number.MAX_SAFE_INTEGER)) throw new ProposalValidationError("Amount is too large to schedule");
+  return Number(amount);
+}
+
 export function validateCommon(p: ProposalCommon): void {
+  if (!Number.isSafeInteger(p.executeAt)) throw new ProposalValidationError("Execution time must be whole unix seconds");
   const now = p.nowSec ?? Math.floor(Date.now() / 1000);
-  if (new TextEncoder().encode(p.memo).length > LIMITS.maxMemoBytes) {
+  if (encoder.encode(p.memo).length > LIMITS.maxMemoBytes) {
     throw new ProposalValidationError(`Memo is longer than ${LIMITS.maxMemoBytes} bytes`);
   }
   if (p.executeAt <= now) throw new ProposalValidationError("Execution time must be in the future");
@@ -77,9 +98,10 @@ export function tokenPaymentProposal(p: ProposalCommon & { to: string; tokenId: 
   if (p.amount <= 0n) throw new ProposalValidationError("Amount must be positive");
   if (p.to === p.treasuryId) throw new ProposalValidationError("Cannot pay the treasury itself");
   const token = TokenId.fromString(p.tokenId);
+  const amount = exactNumber(p.amount);
   const inner = new TransferTransaction()
-    .addTokenTransfer(token, AccountId.fromString(p.treasuryId), -Number(p.amount))
-    .addTokenTransfer(token, AccountId.fromString(p.to), Number(p.amount));
+    .addTokenTransfer(token, AccountId.fromString(p.treasuryId), -amount)
+    .addTokenTransfer(token, AccountId.fromString(p.to), amount);
   return schedule(inner, p);
 }
 
@@ -118,7 +140,7 @@ export function budgetProposal(p: ProposalCommon & { opsAccountId: string; token
     TokenId.fromString(p.tokenId),
     AccountId.fromString(p.treasuryId),
     AccountId.fromString(p.opsAccountId),
-    Number(p.amount),
+    exactNumber(p.amount),
   );
   return schedule(inner, p);
 }

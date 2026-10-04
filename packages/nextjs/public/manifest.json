@@ -1,5 +1,5 @@
 {
-  "name": "Scaffold-HBAR 2 DApp",
-  "description": "A DApp built with Scaffold-HBAR",
+  "name": "Quorum Treasury",
+  "description": "Native Hedera team treasury built with Scaffold-HBAR",
   "iconPath": "logo.svg"
 }

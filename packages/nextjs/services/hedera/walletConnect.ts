@@ -78,7 +78,11 @@ export async function getConnector(): Promise<DAppConnector> {
     );
     await connector.init({ logger: "error" } as never);
     return connector;
-  })();
+  })().catch(error => {
+    // Do not cache a failed init (offline, relay down): the next click should try again.
+    connectorPromise = null;
+    throw error;
+  });
   return connectorPromise;
 }
 

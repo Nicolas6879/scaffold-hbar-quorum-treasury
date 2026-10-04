@@ -60,9 +60,29 @@ export function explain(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Wallet (WalletConnect / HashPack) failures in words a user can act on. Falls back to {@link explain},
+ * so ledger status codes such as NO_NEW_VALID_SIGNATURES keep their own message.
+ */
+export function explainWalletError(error: unknown): string {
+  const text = typeof error === "string" ? error : error instanceof Error ? error.message : (JSON.stringify(error) ?? "");
+  if (/reject|denied|declin|cancel|user closed|closed (the )?modal/i.test(text)) {
+    return "You rejected the request in your wallet. Nothing was sent.";
+  }
+  if (/(session|pairing).*(expired|not found|deleted|disconnect)|no matching key|^expired/i.test(text)) {
+    return "Your wallet session expired. Disconnect, connect HashPack again and retry.";
+  }
+  if (/\b(chain|namespace)\b|ledger|wrong network|different network/i.test(text)) {
+    return "The wallet is on a different network. Switch HashPack to Hedera testnet and reconnect.";
+  }
+  return explain(error);
+}
+
 export function isRetryable(error: unknown): boolean {
   const code = statusOf(error);
   if (code) return STATUS_INFO[code]!.retryable;
+  // `AbortSignal.timeout` rejects with a TimeoutError; undici reports a dropped connection as "fetch failed".
+  if (error instanceof Error && (error.name === "TimeoutError" || error.message === "fetch failed")) return true;
   const status = (error as { status?: number } | null)?.status;
   return status === 429 || (typeof status === "number" && status >= 500);
 }

@@ -41,11 +41,15 @@ end
 step "Core routes answer 200 without env vars"
 (PORT=3000 run next:serve >/tmp/next.log 2>&1 &)
 for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:3000/ && break; sleep 2; done
-for path in / /proposals /budget /audit /new /debug /proposals/0.0.1; do
+for path in / /proposals /budget /audit /new /debug; do
   code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000$path")
   echo "$path -> $code"
   [ "$code" = "200" ] || { tail -50 /tmp/next.log; exit 1; }
 done
+# An unknown proposal id must be a friendly 404, never a 500.
+code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000/proposals/abc")
+echo "/proposals/abc -> $code"
+[ "$code" = "404" ] || { tail -50 /tmp/next.log; exit 1; }
 end
 
 echo "Scaffold check passed ($PM)"

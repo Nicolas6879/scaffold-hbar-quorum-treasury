@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { explain } from "@sh/treasury/errors";
+import { explainWalletError } from "@sh/treasury/errors";
+import { isEntityId } from "@sh/treasury/ids";
+import { parsePositiveUnits, parseUnits } from "@sh/treasury/units";
 import { WALLET_CONNECT_PROJECT_ID, connectWallet } from "~~/services/hedera/walletConnect";
 
 type Kind = "hbar" | "usdc" | "budget";
@@ -12,10 +14,28 @@ interface Props {
   indexTopicId: string;
   members: { type: "ed25519" | "ecdsa"; publicKey: string }[];
   hbarUsd: number | null;
-  memberCount: number;
 }
 
 const USDC = { tokenId: "0.0.5449", decimals: 6 };
+/** HIP-423: a schedule may expire at most 62 days ahead. */
+const MAX_VETO_MINUTES = 62 * 24 * 60;
+
+/** Check the form before the wallet is involved. Throws a message meant for the user. */
+function readInput(kind: Kind, to: string, amount: string, minutes: number): { recipient: string; units: bigint } {
+  const recipient = to.trim();
+  if (kind !== "budget" && !isEntityId(recipient)) throw new Error(`"${to}" is not an account id (expected 0.0.x).`);
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_VETO_MINUTES) {
+    throw new Error(`The veto window must be a whole number of minutes between 1 and ${MAX_VETO_MINUTES}.`);
+  }
+  // Zero is only meaningful for a budget: it revokes the ops allowance.
+  const units =
+    kind === "hbar"
+      ? parsePositiveUnits(amount, 8)
+      : kind === "usdc"
+        ? parsePositiveUnits(amount, USDC.decimals)
+        : parseUnits(amount, USDC.decimals);
+  return { recipient, units };
+}
 
 export function NewProposalForm({ treasuryId, opsAccountId, indexTopicId, members, hbarUsd }: Props) {
   const [kind, setKind] = useState<Kind>("hbar");
@@ -42,10 +62,14 @@ export function NewProposalForm({ treasuryId, opsAccountId, indexTopicId, member
     setBusy(true);
     setResult(null);
     try {
+      const { recipient, units } = readInput(kind, to, amount, minutes);
+      if (kind === "budget" && !opsAccountId) throw new Error("This treasury has no ops account");
+      const label = title.trim();
+
       const sdk = await import("@hiero-ledger/sdk");
-      const { hbarPaymentProposal, tokenPaymentProposal, budgetProposal } = await import("@sh/treasury/proposals");
+      const { hbarPaymentProposal, tokenPaymentProposal, budgetProposal, truncateUtf8 } =
+        await import("@sh/treasury/proposals");
       const { encodeIndexMessage } = await import("@sh/treasury/hcs-index");
-      const { parseUnits } = await import("@sh/treasury/units");
 
       const signer = await connectWallet();
       const vetoKey = new sdk.KeyList(
@@ -60,21 +84,20 @@ export function NewProposalForm({ treasuryId, opsAccountId, indexTopicId, member
         treasuryId,
         vetoKey,
         executeAt: Math.floor(Date.now() / 1000) + minutes * 60,
-        memo: `${(title || kind).slice(0, 60)} #${Date.now() % 1e6}`,
+        // The network limits the memo in bytes, so cut by bytes (a title in another script is wider than 60 bytes).
+        memo: `${truncateUtf8(label || kind, 60)} #${Date.now() % 1e6}`,
       };
       let schedule;
       let usdValue6: bigint | undefined;
       if (kind === "hbar") {
-        const tinybar = parseUnits(amount, 8);
-        schedule = hbarPaymentProposal({ ...common, to, tinybar });
-        if (hbarUsd) usdValue6 = BigInt(Math.round((Number(tinybar) / 1e8) * hbarUsd * 1e6));
+        schedule = hbarPaymentProposal({ ...common, to: recipient, tinybar: units });
+        if (hbarUsd) usdValue6 = BigInt(Math.round((Number(units) / 1e8) * hbarUsd * 1e6));
       } else if (kind === "usdc") {
-        usdValue6 = parseUnits(amount, USDC.decimals);
-        schedule = tokenPaymentProposal({ ...common, to, tokenId: USDC.tokenId, amount: usdValue6 });
+        usdValue6 = units;
+        schedule = tokenPaymentProposal({ ...common, to: recipient, tokenId: USDC.tokenId, amount: units });
       } else {
-        if (!opsAccountId) throw new Error("This treasury has no ops account");
-        usdValue6 = parseUnits(amount, USDC.decimals);
-        schedule = budgetProposal({ ...common, opsAccountId, tokenId: USDC.tokenId, amount: usdValue6 });
+        usdValue6 = units;
+        schedule = budgetProposal({ ...common, opsAccountId: opsAccountId!, tokenId: USDC.tokenId, amount: units });
       }
 
       await schedule.freezeWithSigner(signer as never);
@@ -82,22 +105,31 @@ export function NewProposalForm({ treasuryId, opsAccountId, indexTopicId, member
       const receipt = await response.getReceiptWithSigner(signer as never);
       const scheduleId = receipt.scheduleId!.toString();
 
-      const announce = new sdk.TopicMessageSubmitTransaction()
-        .setTopicId(sdk.TopicId.fromString(indexTopicId))
-        .setMessage(
-          encodeIndexMessage({
-            scheduleId,
-            type: kind === "hbar" ? "hbar-payment" : kind === "usdc" ? "token-payment" : "budget",
-            title: title || common.memo,
-            usdValue6: usdValue6?.toString(),
-            signedVia: "hashpack",
-          }),
-        );
-      await announce.freezeWithSigner(signer as never);
-      await announce.executeWithSigner(signer as never);
-      setResult({ ok: true, text: `Proposal ${scheduleId} created and announced (1 signature).`, scheduleId });
+      try {
+        const announce = new sdk.TopicMessageSubmitTransaction()
+          .setTopicId(sdk.TopicId.fromString(indexTopicId))
+          .setMessage(
+            encodeIndexMessage({
+              scheduleId,
+              type: kind === "hbar" ? "hbar-payment" : kind === "usdc" ? "token-payment" : "budget",
+              title: label || common.memo,
+              usdValue6: usdValue6?.toString(),
+              signedVia: "hashpack",
+            }),
+          );
+        await announce.freezeWithSigner(signer as never);
+        await announce.executeWithSigner(signer as never);
+        setResult({ ok: true, text: `Proposal ${scheduleId} created and announced (1 signature).`, scheduleId });
+      } catch (error) {
+        // The proposal exists on the ledger; only the index entry is missing. Say so instead of implying nothing happened.
+        setResult({
+          ok: false,
+          text: `Proposal ${scheduleId} was created but not announced on the index (${explainWalletError(error)}). It is valid but will not be listed: share the link.`,
+          scheduleId,
+        });
+      }
     } catch (error) {
-      setResult({ ok: false, text: explain(error) });
+      setResult({ ok: false, text: explainWalletError(error) });
     } finally {
       setBusy(false);
     }
@@ -122,13 +154,19 @@ export function NewProposalForm({ treasuryId, opsAccountId, indexTopicId, member
               value={to}
               onChange={e => setTo(e.target.value)}
               required
-              pattern="\d+\.\d+\.\d+"
+              pattern="\s*\d+\.\d+\.\d+\s*"
             />
           </label>
         )}
         <label className="form-control">
           <span className="label-text">Amount ({kind === "hbar" ? "HBAR" : "USDC"})</span>
-          <input className="input input-bordered" value={amount} onChange={e => setAmount(e.target.value)} required />
+          <input
+            className="input input-bordered"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            inputMode="decimal"
+            required
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Title (published on the HCS index)</span>
@@ -145,7 +183,7 @@ export function NewProposalForm({ treasuryId, opsAccountId, indexTopicId, member
             className="input input-bordered"
             type="number"
             min={1}
-            max={89280}
+            max={MAX_VETO_MINUTES}
             value={minutes}
             onChange={e => setMinutes(Number(e.target.value))}
           />

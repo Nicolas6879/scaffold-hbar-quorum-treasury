@@ -58,9 +58,14 @@ const big = (v: LongLike): bigint => (v === null || v === undefined ? 0n : BigIn
 const entity = (e: EntityLike, num: LongLike): string => `${big(e?.shardNum)}.${big(e?.realmNum)}.${big(num)}`;
 const accountId = (e: EntityLike) => entity(e, e?.accountNum);
 
+/** Never throws: a body that is not valid base64/protobuf is reported as unknown, not summarised. */
 export function decodeScheduleBody(base64Body: string): DecodedProposal {
-  const bytes = Uint8Array.from(atob(base64Body), c => c.charCodeAt(0));
-  return decodeSchedulableBody(proto.SchedulableTransactionBody.decode(bytes));
+  try {
+    const bytes = Uint8Array.from(atob(base64Body), c => c.charCodeAt(0));
+    return decodeSchedulableBody(proto.SchedulableTransactionBody.decode(bytes));
+  } catch {
+    return { kind: "unknown", field: "undecodable", memo: "" };
+  }
 }
 
 export function decodeSchedulableBody(body: proto.ISchedulableTransactionBody): DecodedProposal {
