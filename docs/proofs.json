@@ -1,7 +1,7 @@
 [
   {
     "id": "guard-rejects-public-pool",
-    "claim": "SwapGuard refuses the public SaucerSwap WHBAR/USDC pool: PoolPriceOutOfBand(oracle 0.1016 USDC, pool 2.2373 USDC for 1 HBAR) \u2014 ~22x away from Chainlink",
+    "claim": "SwapGuard refuses the public SaucerSwap WHBAR/USDC pool: PoolPriceOutOfBand(oracle 0.1016 USDC, pool 2.2373 USDC for 1 HBAR) — ~22x away from Chainlink",
     "hashscan": "https://hashscan.io/testnet/transaction/0.0.5525497@1791075440.982494874",
     "mirrorPath": "/api/v1/contracts/results/0.0.5525497-1791075440-982494874",
     "expect": {
@@ -31,7 +31,7 @@
       "signatures.1.type": "ECDSA_SECP256K1"
     },
     "signedBy": "script signers 2 and 3",
-    "test": "status.test.ts \u203a is timelocked once quorum is reached"
+    "test": "status.test.ts › is timelocked once quorum is reached"
   },
   {
     "id": "minority-veto",
@@ -43,7 +43,7 @@
       "executed_timestamp": null
     },
     "signedBy": "script signers",
-    "test": "status.test.ts \u203a is vetoed when deleted"
+    "test": "status.test.ts › is vetoed when deleted"
   },
   {
     "id": "signer-rotation",
@@ -66,7 +66,7 @@
       "transactions.0.scheduled": true
     },
     "signedBy": "HashPack (signer 1) + script signer 2 + new key",
-    "test": "proposals-decode.test.ts \u203a key rotation round trip"
+    "test": "proposals-decode.test.ts › key rotation round trip"
   },
   {
     "id": "hashpack-signature-rotation",
@@ -103,5 +103,37 @@
       "transactions.0.entity_id": "0.0.10859128"
     },
     "signedBy": "HashPack"
+  },
+  {
+    "id": "budget-spend",
+    "claim": "The ops account (any 1 signer) spent 1.5 USDC of its 2 USDC allowance from the treasury",
+    "hashscan": "https://hashscan.io/testnet/transaction/0.0.10849918@1791133987.303785744",
+    "mirrorPath": "/api/v1/transactions/0.0.10849918-1791133987-303785744",
+    "expect": {
+      "transactions.0.result": "SUCCESS"
+    },
+    "signedBy": "script signer 2"
+  },
+  {
+    "id": "budget-enforced",
+    "claim": "Spending beyond the remaining allowance is rejected by the network (AMOUNT_EXCEEDS_ALLOWANCE)",
+    "hashscan": "https://hashscan.io/testnet/transaction/0.0.10849918@1791133984.830583839",
+    "mirrorPath": "/api/v1/transactions/0.0.10849918-1791133984-830583839",
+    "expect": {
+      "transactions.0.result": "AMOUNT_EXCEEDS_ALLOWANCE"
+    },
+    "test": "errors-mirror.test.ts › maps AMOUNT_EXCEEDS_ALLOWANCE"
+  },
+  {
+    "id": "guarded-swap-executed",
+    "claim": "A 2-of-3 swap proposal executed through SwapGuard on a pool within 3% of Chainlink (testnet tUSD pool, seeded by the template)",
+    "hashscan": "https://hashscan.io/testnet/schedule/0.0.10859924",
+    "mirrorPath": "/api/v1/contracts/results?timestamp=1791134266.126739104",
+    "expect": {
+      "results.0.result": "SUCCESS",
+      "results.0.contract_id": "0.0.10850381"
+    },
+    "signedBy": "script signers",
+    "test": "SwapGuardTest.test_SwapAtOraclePrice_SendsStableToCaller"
   }
 ]

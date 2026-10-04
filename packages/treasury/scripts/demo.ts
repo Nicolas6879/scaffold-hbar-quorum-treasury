@@ -87,11 +87,13 @@ async function proposeAndApprove(schedule: Parameters<typeof submitProposal>[1],
 
 async function waitExecuted(scheduleId: string) {
   const s = await mirror.waitFor(
-    () => mirror.getSchedule(scheduleId),
-    x => Boolean(x.executed_timestamp),
+    // A just-created schedule can 404 on the mirror for a few seconds.
+    () => mirror.getSchedule(scheduleId).catch(() => null),
+    x => Boolean(x?.executed_timestamp),
     { attempts: 60, intervalMs: 5000 },
   );
-  const inner = await mirror.getScheduledTransaction(s.executed_timestamp!);
+  if (!s?.executed_timestamp) throw new Error(`Schedule ${scheduleId} did not execute in time`);
+  const inner = await mirror.getScheduledTransaction(s.executed_timestamp);
   log(`Executed at ${s.executed_timestamp}: ${inner?.result}`);
   return { schedule: s, inner };
 }
@@ -262,7 +264,8 @@ const steps: Record<string, () => Promise<void>> = {
     const spend = async (amount: number) => {
       const response = await new TransferTransaction()
         .addApprovedTokenTransfer(usdc, AccountId.fromString(treasury), -amount)
-        .addTokenTransfer(usdc, AccountId.fromString("0.0.98"), amount)
+        // Pay the ops account itself: it is USDC-associated, unlike most test recipients.
+        .addTokenTransfer(usdc, AccountId.fromString(ops), amount)
         .execute(opsClient);
       const txId = response.transactionId.toString();
       try {
@@ -388,24 +391,26 @@ const steps: Record<string, () => Promise<void>> = {
   async swap() {
     const d = readDeployment();
     const schedule = swapProposal({
-      ...common("Swap 1 HBAR via SwapGuard"),
+      ...common("Swap 0.25 HBAR via SwapGuard"),
       swapGuardId: need(d.swapGuardDemoId, "demo guard"),
-      tinybar: 100_000_000n,
-      slippageBps: 150,
+      // The demo pool is small (~60 HBAR): keep price impact + the 0.3% fee well inside the slippage.
+      tinybar: 25_000_000n,
+      slippageBps: 300,
       deadline: Math.floor(Date.now() / 1000) + TIMELOCK + 3600,
     });
-    const id = await proposeAndApprove(schedule, "Swap 1 HBAR for tUSD through SwapGuard", "swap");
-    const { inner } = await waitExecuted(id);
+    const id = await proposeAndApprove(schedule, "Swap 0.25 HBAR for tUSD through SwapGuard", "swap");
+    const { schedule: executed, inner } = await waitExecuted(id);
+    // Only record a proof for a swap that actually went through.
+    if (inner?.result !== "SUCCESS") throw new Error(`Swap inner result ${inner?.result}`);
     saveProof({
       id: "guarded-swap-executed",
       claim: "A 2-of-3 swap proposal executed through SwapGuard on a pool within 3% of Chainlink (testnet tUSD pool, seeded by the template)",
       hashscan: hashscan("schedule", id),
-      mirrorPath: `/api/v1/schedules/${id}`,
-      expect: { deleted: false, wait_for_expiry: true },
+      mirrorPath: `/api/v1/contracts/results?timestamp=${executed.executed_timestamp}`,
+      expect: { "results.0.result": "SUCCESS", "results.0.contract_id": need(d.swapGuardDemoId, "demo guard") },
       signedBy: "script signers",
       test: "SwapGuardTest.test_SwapAtOraclePrice_SendsStableToCaller",
     });
-    if (inner?.result !== "SUCCESS") throw new Error(`Swap inner result ${inner?.result}`);
     const guard = await mirror.getAccount(need(d.swapGuardDemoId, "demo guard"));
     log(`SwapGuard HBAR balance after swap: ${guard.balance.balance} (must be 0)`);
   },
