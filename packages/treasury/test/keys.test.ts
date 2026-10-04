@@ -4,12 +4,15 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   decodeKeyProto,
+  hasSignedWith,
   hexToBytes,
   isMember,
   isSatisfied,
   keyFromMirror,
   KeyNode,
+  shortKey,
   signatureProgress,
+  signerNumber,
   stripDerPrefix,
 } from "../src/keys";
 import { EC_KEYS, ED_KEYS, mirrorKeyOf, rawPublicKey, threshold } from "./helpers";
@@ -117,5 +120,25 @@ describe("signature progress", () => {
       ),
       { numRuns: 200 },
     );
+  });
+});
+
+describe("signer identification for the browser wallet", () => {
+  it("numbers members 1-based and rejects outsiders (DER or raw)", () => {
+    const outsider = EC_KEYS[0]!;
+    expect(signerNumber(mixed2of3, rawPublicKey(a))).toBe(1);
+    expect(signerNumber(mixed2of3, b.publicKey.toStringDer())).toBe(2);
+    expect(signerNumber(mixed2of3, rawPublicKey(outsider))).toBeNull();
+  });
+
+  it("detects whether a signature prefix landed for a key", () => {
+    const prefix = rawPublicKey(c).slice(0, 12);
+    expect(hasSignedWith(rawPublicKey(c), [prefix])).toBe(true);
+    expect(hasSignedWith(rawPublicKey(a), [prefix])).toBe(false);
+    expect(hasSignedWith(rawPublicKey(a), [])).toBe(false);
+  });
+
+  it("shortens keys", () => {
+    expect(shortKey(`302a300506032b6570032100${"ab".repeat(32)}`)).toBe("abababab…");
   });
 });

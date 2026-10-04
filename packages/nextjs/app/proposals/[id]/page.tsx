@@ -19,7 +19,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
       <Message text={`Could not load schedule ${id}: ${error instanceof Error ? error.message : String(error)}`} />
     );
   }
-  const { schedule, decoded, summary, status, isTreasuryProposal } = data;
+  const { schedule, decoded, summary, status, isTreasuryProposal, treasuryKey } = data;
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 max-w-4xl mx-auto w-full">
@@ -74,6 +74,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
           canSign={canSign(status.state)}
           canVeto={canVeto(status.state)}
           summary={summary}
+          treasuryKey={treasuryKey}
         />
       )}
     </div>

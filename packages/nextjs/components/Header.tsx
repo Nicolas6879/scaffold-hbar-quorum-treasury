@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bars3Icon, BugAntIcon } from "@heroicons/react/24/outline";
-import { RainbowKitCustomConnectButton } from "~~/components/scaffold-hbar";
+import { HashPackButton } from "~~/components/treasury/HashPackButton";
 import { useOutsideClick } from "~~/hooks/scaffold-hbar";
 
 type HeaderMenuLink = {
@@ -95,7 +95,7 @@ export const Header = () => {
         </ul>
       </div>
       <div className="navbar-end grow mr-4">
-        <RainbowKitCustomConnectButton />
+        <HashPackButton />
       </div>
     </div>
   );

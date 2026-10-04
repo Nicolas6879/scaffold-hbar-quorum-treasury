@@ -222,3 +222,18 @@ export function bytesToHex(bytes: Uint8Array): string {
 export function base64ToHex(b64: string): string {
   return bytesToHex(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
 }
+
+/** 1-based signer number of `publicKey` among the quorum's simple keys, or null if it is not a member. */
+export function signerNumber(node: KeyNode, publicKey: string): number | null {
+  const key = stripDerPrefix(publicKey.toLowerCase());
+  const index = memberKeys(node).indexOf(key);
+  return index === -1 ? null : index + 1;
+}
+
+/** True when `publicKey` is covered by one of the schedule's signature prefixes (hex, e.g. via {@link base64ToHex}). */
+export function hasSignedWith(publicKey: string, signedPrefixes: Iterable<string>): boolean {
+  return matchesAny(publicKey, normalizePrefixes(signedPrefixes));
+}
+
+/** Short display form of a public key: first 8 hex chars plus an ellipsis. */
+export const shortKey = (publicKey: string): string => `${stripDerPrefix(publicKey.toLowerCase()).slice(0, 8)}…`;

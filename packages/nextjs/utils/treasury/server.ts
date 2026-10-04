@@ -176,6 +176,7 @@ export async function loadSchedule(id: string) {
     summary: describeProposal(decoded, { hbar: formatHbar }),
     status: key ? proposalStatus(schedule, key, Date.now() / 1000, inner) : null,
     isTreasuryProposal: schedule.payer_account_id === deployment.treasuryId,
+    treasuryKey: key,
   };
 }
 

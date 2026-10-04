@@ -1,5 +1,6 @@
 import { DebugContracts } from "./_components/DebugContracts";
 import type { NextPage } from "next";
+import { RainbowKitCustomConnectButton } from "~~/components/scaffold-hbar";
 import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const metadata = getMetadata({
@@ -10,6 +11,10 @@ export const metadata = getMetadata({
 const Debug: NextPage = () => {
   return (
     <>
+      {/* The EVM wallet only matters here (contract debugging); the header uses HashPack. */}
+      <div className="flex justify-end px-4 pt-4">
+        <RainbowKitCustomConnectButton />
+      </div>
       <DebugContracts />
       <div className="text-center mt-8 bg-secondary p-10">
         <h1 className="text-4xl my-0">Debug Contracts</h1>
