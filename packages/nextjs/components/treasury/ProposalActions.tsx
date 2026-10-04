@@ -86,12 +86,15 @@ export function ProposalActions({
     setBusy(kind);
     setResult(null);
     try {
-      const { ScheduleDeleteTransaction, ScheduleId, ScheduleSignTransaction } = await import("@hiero-ledger/sdk");
+      const { AccountId, ScheduleDeleteTransaction, ScheduleId, ScheduleSignTransaction } =
+        await import("@hiero-ledger/sdk");
       const signer = await connectWallet();
       const tx =
         kind === "sign"
           ? new ScheduleSignTransaction().setScheduleId(ScheduleId.fromString(scheduleId))
           : new ScheduleDeleteTransaction().setScheduleId(ScheduleId.fromString(scheduleId));
+      // DAppSigner.populateTransaction only sets the transaction id; freezing also needs a node.
+      tx.setNodeAccountIds([AccountId.fromString(`0.0.${3 + Math.floor(Math.random() * 5)}`)]);
       await tx.freezeWithSigner(signer as never);
       const response = await tx.executeWithSigner(signer as never);
       const sent = `${kind === "sign" ? "Signed" : "Vetoed"} · ${response.transactionId.toString()}`;
