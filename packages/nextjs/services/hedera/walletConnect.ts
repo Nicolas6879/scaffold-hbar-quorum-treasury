@@ -15,7 +15,7 @@ let connectorPromise: Promise<DAppConnector> | null = null;
 export async function getConnector(): Promise<DAppConnector> {
   if (!WALLET_CONNECT_PROJECT_ID) {
     throw new Error(
-      "Set NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID (free at https://cloud.reown.com) to sign with HashPack.",
+      "Set NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID (free at https://dashboard.walletconnect.com) to sign with HashPack.",
     );
   }
   connectorPromise ??= (async () => {

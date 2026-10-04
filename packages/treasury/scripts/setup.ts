@@ -72,8 +72,13 @@ async function main() {
     [d.treasuryId!, 2],
     [d.opsAccountId!, 1],
   ] as const) {
-    const account = await mirror.getAccount(accountId);
-    if (account.balance.tokens.some(t => t.token_id === TESTNET.usdc.tokenId)) continue;
+    // A just-created account takes a few seconds to appear on the mirror node.
+    const account = await mirror.waitFor(
+      () => mirror.getAccount(accountId).catch(() => null),
+      a => a !== null,
+      { attempts: 20, intervalMs: 3000 },
+    );
+    if (account!.balance.tokens.some(t => t.token_id === TESTNET.usdc.tokenId)) continue;
     const keys = scriptSigners(signers).slice(0, needed);
     if (keys.length < needed) throw new Error(`Need ${needed} script signer key(s) to associate USDC with ${accountId}`);
     let tx = new TokenAssociateTransaction().setAccountId(AccountId.fromString(accountId)).setTokenIds([usdc]).freezeWith(client);

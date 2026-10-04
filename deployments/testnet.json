@@ -1,0 +1,19 @@
+{
+  "network": "testnet",
+  "treasuryId": "0.0.10849917",
+  "signerPublicKeys": [
+    "96de6ac8686a6d97d61827042ce12d28930a0d1ace498037f39c39b8419b1e99",
+    "03653f0881f5e74eb5d5d4db7aa548d685a0a6ed3fd86e286eb553852a1936f04f",
+    "7da1299c40a0fb5248e9154fc8fe8994a832d4a07d17c5aa63c1f221d1553572"
+  ],
+  "opsAccountId": "0.0.10849918",
+  "indexTopicId": "0.0.10849919",
+  "usdcTokenId": "0.0.5449",
+  "swapGuardUsdcId": "0.0.10849927",
+  "swapGuardUsdcEvm": "0x0000000000000000000000000000000000a58e87",
+  "demoStableTokenId": "0.0.10849976",
+  "demoPoolEvm": "0xB4c05e43CBd88BD8cF18Cf93b1798f0953be4569",
+  "demoPoolSeeded": true,
+  "swapGuardDemoId": "0.0.10850381",
+  "swapGuardDemoEvm": "0x0000000000000000000000000000000000a5904d"
+}

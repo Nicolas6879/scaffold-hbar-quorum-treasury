@@ -39,6 +39,7 @@ export interface Deployment {
   swapGuardDemoId?: string;
   swapGuardDemoEvm?: string;
   demoPoolEvm?: string;
+  demoPoolSeeded?: boolean;
 }
 
 export const DEPLOYMENT_FILE = resolve(REPO_ROOT, "deployments/testnet.json");

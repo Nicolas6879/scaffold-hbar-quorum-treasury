@@ -1,1 +1,58 @@
-[]
+[
+  {
+    "id": "guard-rejects-public-pool",
+    "claim": "SwapGuard refuses the public SaucerSwap WHBAR/USDC pool: PoolPriceOutOfBand(oracle 0.1016 USDC, pool 2.2373 USDC for 1 HBAR) — ~22x away from Chainlink",
+    "hashscan": "https://hashscan.io/testnet/transaction/0.0.5525497@1791075440.982494874",
+    "mirrorPath": "/api/v1/contracts/results/0.0.5525497-1791075440-982494874",
+    "expect": {
+      "result": "CONTRACT_REVERT_EXECUTED",
+      "error_message": "0xc93940c50000000000000000000000000000000000000000000000000000000000018cd60000000000000000000000000000000000000000000000000000000000222354"
+    },
+    "signedBy": "operator (direct call)",
+    "test": "SwapGuardTest.test_RejectsPoolFarAboveOracle"
+  },
+  {
+    "id": "treasury-threshold-key",
+    "claim": "The treasury account is controlled by a 2-of-3 threshold key (no multisig contract)",
+    "hashscan": "https://hashscan.io/testnet/account/0.0.10849917",
+    "mirrorPath": "/api/v1/accounts/0.0.10849917",
+    "expect": {
+      "key._type": "ProtobufEncoded"
+    }
+  },
+  {
+    "id": "payment-executed-after-timelock",
+    "claim": "A 2-of-3 approved payment waited for its timelock (waitForExpiry) and then executed",
+    "hashscan": "https://hashscan.io/testnet/schedule/0.0.10849942",
+    "mirrorPath": "/api/v1/schedules/0.0.10849942",
+    "expect": {
+      "wait_for_expiry": true,
+      "deleted": false,
+      "signatures.1.type": "ECDSA_SECP256K1"
+    },
+    "signedBy": "script signers 2 and 3",
+    "test": "status.test.ts › is timelocked once quorum is reached"
+  },
+  {
+    "id": "minority-veto",
+    "claim": "One signer vetoed a fully-approved proposal during its timelock (ScheduleDelete with the 1-of-3 admin key)",
+    "hashscan": "https://hashscan.io/testnet/schedule/0.0.10849966",
+    "mirrorPath": "/api/v1/schedules/0.0.10849966",
+    "expect": {
+      "deleted": true,
+      "executed_timestamp": null
+    },
+    "signedBy": "script signers",
+    "test": "status.test.ts › is vetoed when deleted"
+  },
+  {
+    "id": "signer-rotation",
+    "claim": "Signers were rotated by a scheduled AccountUpdate approved by 2 of the old signers and the new key",
+    "hashscan": "https://hashscan.io/testnet/schedule/0.0.10849985",
+    "mirrorPath": "/api/v1/schedules/0.0.10849985",
+    "expect": {
+      "deleted": false
+    },
+    "signedBy": "script signers + new key"
+  }
+]

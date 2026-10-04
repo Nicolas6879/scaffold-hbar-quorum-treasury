@@ -51,7 +51,7 @@ yarn next:dev                          # watch it go: collecting → veto window
 |---|---|---|
 | `OPERATOR_ID`, `OPERATOR_KEY` | for scripts | Funded testnet account that pays for setup. ECDSA keys from the portal work as-is; set `OPERATOR_KEY_TYPE=ED25519` for raw ED25519 hex. |
 | `SIGNER1_PUBLIC_KEY` | no | Make your HashPack account signer 1 |
-| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | for browser signing | Free at [cloud.reown.com](https://cloud.reown.com). Without it the UI is read-only and tells you the CLI command instead. |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | for browser signing | Free at [dashboard.walletconnect.com](https://dashboard.walletconnect.com). Without it the UI is read-only and tells you the CLI command instead. |
 | `NEXT_PUBLIC_TREASURY_ID` | no | Point the dashboard at another treasury without editing files |
 | `TREASURY_INITIAL_HBAR`, `OPS_INITIAL_HBAR` | no | Funding for new accounts (default 40 and 5) |
 

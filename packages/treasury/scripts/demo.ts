@@ -32,11 +32,12 @@ import {
   swapProposal,
   TESTNET,
   toLongZeroAddress,
+  isLongZeroAddress,
   swapGuardAbi,
 } from "../src";
 import { announce, signProposal, submitProposal, vetoProposal } from "./lib/actions";
 import { parseArgs } from "./lib/args";
-import { REPO_ROOT } from "./lib/env";
+import { REPO_ROOT, upsertEnvLocal } from "./lib/env";
 import { hashscan, log, mirror, operatorClient, readDeployment, writeDeployment } from "./lib/network";
 import { mirrorTxId, saveProof } from "./lib/proofs";
 import { anyOneKey, loadOrCreateSigners, scriptSigners } from "./lib/signers";
@@ -52,6 +53,12 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 function need<T>(value: T | undefined, what: string): T {
   if (value === undefined) throw new Error(`${what} missing — run the earlier demo steps first`);
   return value;
+}
+
+/** ECDSA accounts with an EVM alias must receive EVM-side transfers at the alias, or the router fails with INVALID_ALIAS_KEY. */
+async function evmRecipient(accountId: string): Promise<`0x${string}`> {
+  const a = await mirror.getAccount(accountId);
+  return (a.evm_address && !isLongZeroAddress(a.evm_address) ? a.evm_address : toLongZeroAddress(accountId)) as `0x${string}`;
 }
 
 function common(memo: string) {
@@ -196,6 +203,8 @@ const steps: Record<string, () => Promise<void>> = {
   async fund() {
     const d = readDeployment();
     const treasury = need(d.treasuryId, "treasury");
+    const held = (await mirror.getAccount(treasury)).balance.tokens.find(t => t.token_id === TESTNET.usdc.tokenId)?.balance ?? 0;
+    if (held >= 3_000_000) return log(`Treasury already holds ${held / 1e6} USDC`);
     const op = await mirror.getAccount(operatorId.toString());
     if (!op.balance.tokens.some(t => t.token_id === TESTNET.usdc.tokenId)) {
       await (
@@ -206,7 +215,12 @@ const steps: Record<string, () => Promise<void>> = {
     const data = encodeFunctionData({
       abi: routerAbi,
       functionName: "swapExactETHForTokens",
-      args: [0n, [TESTNET.saucerswap.whbarTokenEvm, toLongZeroAddress(TESTNET.usdc.tokenId)], toLongZeroAddress(operatorId.toString()), BigInt(Math.floor(Date.now() / 1000) + 600)],
+      args: [
+        0n,
+        [TESTNET.saucerswap.whbarTokenEvm, toLongZeroAddress(TESTNET.usdc.tokenId)],
+        await evmRecipient(operatorId.toString()),
+        BigInt(Math.floor(Date.now() / 1000) + 600),
+      ],
     });
     await (
       await new ContractExecuteTransaction()
@@ -327,10 +341,15 @@ const steps: Record<string, () => Promise<void>> = {
           .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
           .execute(client)
       ).getReceipt(client);
-      pair = await evm.readContract({ address: factory, abi: factoryAbi, functionName: "getPair", args: [TESTNET.saucerswap.whbarTokenEvm, tusdEvm] });
+      // The JSON-RPC relay lags consensus; wait until the new pair is visible.
+      for (let i = 0; i < 20 && /^0x0+$/.test(pair); i++) {
+        await sleep(3000);
+        pair = await evm.readContract({ address: factory, abi: factoryAbi, functionName: "getPair", args: [TESTNET.saucerswap.whbarTokenEvm, tusdEvm] });
+      }
       log("WHBAR/tUSD pair created", pair);
     }
-    writeDeployment({ demoPoolEvm: pair });
+    d = writeDeployment({ demoPoolEvm: pair });
+    if (d.demoPoolSeeded && !args.reseed) return log("Pool already seeded (pass --reseed to add liquidity again)");
 
     // Seed at the Chainlink price: liquidity HBAR × price = tUSD.
     const round = await readPriceRound(evm as never, TESTNET.chainlinkHbarUsd);
@@ -347,7 +366,7 @@ const steps: Record<string, () => Promise<void>> = {
     const data = encodeFunctionData({
       abi: routerAbi,
       functionName: "addLiquidityETH",
-      args: [tusdEvm, tusdAmount, (tusdAmount * 99n) / 100n, (tinybar * 99n) / 100n, toLongZeroAddress(operatorId.toString()), deadline],
+      args: [tusdEvm, tusdAmount, (tusdAmount * 99n) / 100n, (tinybar * 99n) / 100n, await evmRecipient(operatorId.toString()), deadline],
     });
     const response = await new ContractExecuteTransaction()
       .setContractId(ContractId.fromString(TESTNET.saucerswap.routerId))
@@ -356,6 +375,7 @@ const steps: Record<string, () => Promise<void>> = {
       .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
       .execute(client);
     await response.getReceipt(client);
+    writeDeployment({ demoPoolSeeded: true });
     log(`Seeded ${hbar} HBAR + ${Number(tusdAmount) / 1e6} tUSD at $${Number(round.answer) / 10 ** round.decimals}/HBAR`, hashscan("transaction", response.transactionId.toString()));
 
     if (!readDeployment().swapGuardDemoId) {
@@ -390,15 +410,39 @@ const steps: Record<string, () => Promise<void>> = {
     log(`SwapGuard HBAR balance after swap: ${guard.balance.balance} (must be 0)`);
   },
 
-  /** Proof 7: rotate signer 3 out for a new key (needs 2 old signatures + the new key). */
+  /**
+   * Proof 7: replace signer 3. The network requires 2 current signers AND the new key, so the new key
+   * signs the schedule too. The new private key is stored in .env.local before anything is submitted.
+   *   --approver hashpack   leave the second current signature to signer 1 in the browser
+   */
   async rotate() {
+    const approver = args.approver === "hashpack" ? null : local[1];
     const newSigner = PrivateKey.generateED25519();
+    upsertEnvLocal({ SIGNER3_KEY: newSigner.toStringDer() });
     const keys = [signers[0]!.publicKey, signers[1]!.publicKey, newSigner.publicKey];
-    const schedule = rotateSignersProposal({ ...common("Rotate signer 3"), newKey: new KeyList(keys, 2) });
-    const id = await proposeAndApprove(schedule, "Replace signer 3", "rotate-signers");
+    const d = readDeployment();
+    const schedule = rotateSignersProposal({
+      ...common("Rotate signer 3"),
+      executeAt: Math.floor(Date.now() / 1000) + Number(args.timelock ?? (approver ? 90 : 1800)),
+      newKey: new KeyList(keys, 2),
+    });
+    const { scheduleId: id } = await submitProposal(client, schedule, local[0]!.privateKey);
+    await announce(
+      client,
+      need(d.indexTopicId, "index topic"),
+      { scheduleId: id, type: "rotate-signers", title: "Replace signer 3", signedVia: "script" },
+      local[0]!.privateKey,
+    );
     await signProposal(client, id, newSigner);
+    writeDeployment({ signerPublicKeys: keys.map(k => k.toStringRaw()) });
+    log(`Rotation proposal ${id} signed by signer ${local[0]!.index} and the new key`, hashscan("schedule", id));
+    if (!approver) {
+      log(`Now sign it with HashPack (signer 1): http://localhost:3000/proposals/${id}`);
+      return;
+    }
+    await signProposal(client, id, approver.privateKey);
     const { inner } = await waitExecuted(id);
-    log(`Rotation result ${inner?.result}. New signer 3 key stored as SIGNER3_KEY_ROTATED in .env.local`);
+    log(`Rotation result ${inner?.result}; new signer 3 key saved in .env.local`);
     saveProof({
       id: "signer-rotation",
       claim: "Signers were rotated by a scheduled AccountUpdate approved by 2 of the old signers and the new key",
