@@ -2,6 +2,8 @@
 
 > A team treasury built from Hedera's own primitives, not a wallet contract. **Large payments need 2 of 3 founders and then wait out a veto window; day-to-day spending comes from a USDC budget the network caps; HBAR→USD swaps go through a guard that demands the Chainlink price.** SaucerSwap is where the swap happens, Chainlink is what it is checked against.
 
+▶ **3-minute demo video:** https://youtu.be/u1rhD0c2dZA
+
 ```bash
 npm create scaffold-hbar@latest -- --template Nicolas6879/scaffold-hbar-quorum-treasury
 # or, explicit:
